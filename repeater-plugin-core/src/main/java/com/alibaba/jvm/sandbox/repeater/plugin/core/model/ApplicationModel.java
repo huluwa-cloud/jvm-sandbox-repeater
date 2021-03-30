@@ -1,7 +1,10 @@
 package com.alibaba.jvm.sandbox.repeater.plugin.core.model;
 
+import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.net.UnknownHostException;
+import java.util.Enumeration;
 
 import com.alibaba.jvm.sandbox.repeater.plugin.domain.RepeaterConfig;
 import com.alibaba.jvm.sandbox.repeater.plugin.core.util.ExceptionAware;
@@ -40,12 +43,37 @@ public class ApplicationModel {
         // for example, you can define it your self
         this.appName = getSystemPropertyOrDefault("app.name", "unknown");
         this.environment = getSystemPropertyOrDefault("app.env", "unknown");
+//        try {
+//            this.host = InetAddress.getLocalHost().getHostAddress();
+            this.host = getIpAddress();
+//        } catch (UnknownHostException e) {
+//            // default value for disaster
+//            this.host = "127.0.0.1";
+//        }
+    }
+
+    private String getIpAddress() {
         try {
-            this.host = InetAddress.getLocalHost().getHostAddress();
-        } catch (UnknownHostException e) {
-            // default value for disaster
-            this.host = "127.0.0.1";
+            Enumeration<NetworkInterface> allNetInterfaces = NetworkInterface.getNetworkInterfaces();
+            InetAddress ip = null;
+            while (allNetInterfaces.hasMoreElements()) {
+                NetworkInterface netInterface = (NetworkInterface) allNetInterfaces.nextElement();
+                if (netInterface.isLoopback() || netInterface.isVirtual() || !netInterface.isUp()) {
+                    continue;
+                } else {
+                    Enumeration<InetAddress> addresses = netInterface.getInetAddresses();
+                    while (addresses.hasMoreElements()) {
+                        ip = addresses.nextElement();
+                        if (ip instanceof Inet4Address) {
+                            return ip.getHostAddress();
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("IP地址获取失败" + e.toString());
         }
+        return "";
     }
 
     public static ApplicationModel instance() {
